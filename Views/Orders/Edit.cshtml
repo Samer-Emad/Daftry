@@ -1,0 +1,101 @@
+﻿@model Daftry.ViewModels.CreateOrderVM
+
+<div class="container mt-4 text-right" dir="rtl">
+    <div class="card mb-4 bg-dark text-white">
+        <div class="card-body">
+            <h3>تعديل الفاتورة رقم (#@ViewBag.OrderId) للعميل: <span class="text-warning">@Model.CustomerName</span></h3>
+        </div>
+    </div>
+    
+    <hr />
+
+    <form asp-action="Edit" method="post">
+        <input type="hidden" name="orderId" value="@ViewBag.OrderId" />
+        <input type="hidden" asp-for="CustomerId" />
+        <input type="hidden" asp-for="CustomerName" />
+
+        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="text-secondary">محتويات الفاتورة (عدل البيانات مباشرة أو احذف سطر):</h5>
+            <button type="button" id="addItemBtn" class="btn btn-info fw-bold">إضافة سطر منتج جديد (+)</button>
+        </div>
+        
+        <table class="table table-bordered text-center" id="invoiceTable">
+            <thead class="table-primary">
+                <tr>
+                    <th>اسم المنتج (يدوي)</th>
+                    <th style="width: 180px;">السعر (جنيه)</th>
+                    <th style="width: 150px;">الكمية</th>
+                    <th style="width: 100px;">حذف</th>
+                </tr>
+            </thead>
+            <tbody id="invoiceBody">
+                @{
+                    int index = 0;
+                }
+                @foreach (var item in Model.SelectedItems)
+                {
+                    <tr id="row-@index">
+                        <td>
+                            <input type="text" name="SelectedItems[@index].ProductName" class="form-control" value="@item.ProductName" required />
+                        </td>
+                        <td>
+                            <input type="number" name="SelectedItems[@index].UnitPrice" class="form-control text-center" step="0.01" value="@item.UnitPrice" required />
+                        </td>
+                        <td>
+                            <input type="number" name="SelectedItems[@index].Quantity" class="form-control text-center" min="1" value="@item.Quantity" required />
+                        </td>
+                        <td>
+                            <button type="button" class="btn btn-danger btn-sm" onclick="removeRow(@index)">حذف</button>
+                        </td>
+                    </tr>
+                    index++;
+                }
+            </tbody>
+        </table>
+
+        <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn btn-success btn-lg px-5 fw-bold">حفظ التعديلات الجديدة</button>
+            <a asp-controller="Customers" asp-action="Details" asp-route-id="@Model.CustomerId" class="btn btn-secondary btn-lg">إلغاء التعديل</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <script>
+        // العداد بيبدأ من رقم الاندكس التالي بعد المنتجات الحالية اللي اتعرضت
+        let itemIndex = @Model.SelectedItems.Count;
+
+        document.getElementById('addItemBtn').addEventListener('click', function () {
+            const tbody = document.getElementById('invoiceBody');
+
+            const rowHtml = `
+                <tr id="row-${itemIndex}">
+                    <td>
+                        <input type="text" name="SelectedItems[${itemIndex}].ProductName" class="form-control" placeholder="اسم المنتج..." required />
+                    </td>
+                    <td>
+                        <input type="number" name="SelectedItems[${itemIndex}].UnitPrice" class="form-control text-center" step="0.01" value="0.00" min="0" required />
+                    </td>
+                    <td>
+                        <input type="number" name="SelectedItems[${itemIndex}].Quantity" class="form-control text-center" min="1" value="1" required />
+                    </td>
+                    <td>
+                        <button type="button" class="btn btn-danger btn-sm" onclick="removeRow(${itemIndex})">حذف</button>
+                    </td>
+                </tr>
+            `;
+
+            tbody.insertAdjacentHTML('beforeend', rowHtml);
+            itemIndex++;
+        });
+
+        function removeRow(index) {
+            const row = document.getElementById(`row-${index}`);
+            if (row) {
+                row.remove();
+            }
+        }
+    </script>
+}

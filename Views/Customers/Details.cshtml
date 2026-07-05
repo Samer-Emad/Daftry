@@ -1,0 +1,161 @@
+﻿@model Daftry.ViewModels.CustomerStatementVM
+
+<div class="container mt-4 text-right" dir="rtl">
+
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show fw-bold text-center shadow-sm" role="alert">
+            ⚠️ @TempData["ErrorMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show fw-bold text-center shadow-sm" role="alert">
+            ✅ @TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @{
+        // حساب المديونية المتبقية الحالية لاستخدامها في قيود الإدخال
+        var currentDebt = Model.TotalPurchases - Model.TotalPayments;
+    }
+
+    <div class="card bg-light mb-4 shadow-sm">
+        <div class="card-body d-flex justify-content-between align-items-center">
+            <div>
+                <h3>دفتر العميل: <span class="text-primary">@Model.CustomerName</span></h3>
+                <h4 class="mt-2">
+                    الحساب المتبقي الكلي (الصافي المطلوب):
+                    <span class="badge @(currentDebt > 0 ? "bg-danger" : "bg-success")">
+                        @currentDebt جنيه
+                    </span>
+                </h4>
+            </div>
+            <div class="d-flex gap-2">
+                <a asp-controller="Customers" asp-action="Edit" asp-route-id="@Model.CustomerId" class="btn btn-outline-secondary fw-bold">تعديل بيانات العميل</a>
+
+                <a asp-controller="Orders" asp-action="Create" asp-route-customerId="@Model.CustomerId" class="btn btn-warning fw-bold">تسجيل فاتورة جديدة آجل (+)</a>
+                
+                <a href="/Orders/PrintAllInvoices?customerId=@Model.CustomerId"
+                       target="_blank"
+                       class="btn btn-success fw-bold">
+                    🖨️ طباعة كشف الفواتير الإجمالي (PDF)
+                </a>
+
+                <form asp-controller="Customers" asp-action="DeleteCustomer" method="post" onsubmit="return confirm('تنبيه هام جداً: هل أنت متأكد من حذف هذا العميل نهائياً؟ سيتم مسح الدفتر وكل الفواتير والمدفوعات الخاصة به ومسحه من السيستم!');">
+                    <input type="hidden" name="customerId" value="@Model.CustomerId" />
+                    <button type="submit" class="btn btn-danger fw-bold">حذف العميل نهائياً</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4 border-success shadow-sm">
+        <div class="card-body">
+            <h5>تسجيل دفعة نقداً لتصفية الحساب أو جزء منه:</h5>
+            <form asp-controller="Payments" asp-action="AddPayment" method="post" class="row g-3 align-items-center mt-1">
+                <input type="hidden" name="customerId" value="@Model.CustomerId" />
+                <div class="col-auto">
+                    <input type="number"
+                           name="amount"
+                           class="form-control"
+                           placeholder="ادخل المبلغ المدفوع"
+                           step="0.01"
+                           max="@currentDebt"
+                           required />
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-success fw-bold" @(currentDebt <= 0 ? "disabled" : "")>
+                        تأكيد الدفع والتسديد
+                    </button>
+                </div>
+            </form>
+            
+            @if (currentDebt <= 0)
+            {
+                <small class="text-success d-block mt-2 fw-bold">حساب هذا العميل مصفى بالكامل، لا توجد مديونية لتسديدها حالياً.</small>
+            }
+        </div>
+    </div>
+
+    <div class="mb-4">
+        <h5>فلاتر تقارير المشتريات المستقلة:</h5>
+        <div class="d-flex justify-content-between align-items-center bg-light p-2 rounded shadow-sm">
+            <div class="btn-group" role="group">
+                <a href="?period=day" class="btn @(Model.SelectedPeriod == "day" ? "btn-dark" : "btn-outline-dark")">مشتريات اليوم فقط</a>
+                <a href="?period=week" class="btn @(Model.SelectedPeriod == "week" ? "btn-dark" : "btn-outline-dark")">مشتريات آخر 7 أيام</a>
+                <a href="?period=month" class="btn @(Model.SelectedPeriod == "month" ? "btn-dark" : "btn-outline-dark")">مشتريات الشهر الحالي</a>
+                <a href="?period=year" class="btn @(Model.SelectedPeriod == "year" ? "btn-dark" : "btn-outline-dark")">مشتريات السنة الحالية</a>
+                <a href="?period=all" class="btn @(Model.SelectedPeriod == "all" ? "btn-dark" : "btn-outline-dark")">كل المشتريات السابقة</a>
+            </div>
+            
+            <a href="/Orders/PrintPeriodInvoices?customerId=@Model.CustomerId&period=@(Model.SelectedPeriod ?? "all")"
+                   target="_blank"
+                   class="btn btn-success fw-bold">
+                🖨️ طباعة تقرير فترة [ @(Model.SelectedPeriod == "day" ? "اليوم" : Model.SelectedPeriod == "week" ? "الأسبوع" : Model.SelectedPeriod == "month" ? "الشهر" : Model.SelectedPeriod == "year" ? "السنة" : "الكل") ] (PDF)
+            </a>
+        </div>
+        <div class="alert alert-info mt-2 mb-0 shadow-sm">
+            إجمالي مشتريات الفترة المختارة [ @Model.SelectedPeriod ]: <strong>@Model.PeriodPurchasesTotal جنيه</strong>
+        </div>
+    </div>
+
+    <h5 class="mt-4">سجل المشتريات (الفواتير السابقة المتراكمة):</h5>
+    <table class="table table-sm table-hover table-bordered text-center mb-5 shadow-sm">
+        <thead class="table-warning">
+            <tr>
+                <th>رقم الفاتورة</th>
+                <th>التاريخ والوقت</th>
+                <th>المنتجات وتفاصيلها</th>
+                <th>إجمالي الفاتورة</th>
+                <th style="width: 200px;">التحكم</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (!Model.Orders.Any())
+            {
+                <tr><td colspan="5" class="py-3 text-muted">لا توجد فواتير مسجلة في هذه الفترة</td></tr>
+            }
+            @foreach (var order in Model.Orders)
+            {
+                <tr>
+                    <td class="align-middle fw-bold text-secondary">@order.OrderSerialNumber</td>
+                    <td class="align-middle">@order.OrderDate.ToString("yyyy-MM-dd hh:mm tt")</td>
+                    <td class="text-right align-middle">
+                        <ul class="mb-0">
+                            @foreach (var item in order.Items)
+                            {
+                                <li>@item.ProductName (العدد: @item.Quantity × @item.UnitPrice جنيه)</li>
+                            }
+                        </ul>
+                    </td>
+                    <td class="fw-bold align-middle text-danger">@order.Items.Sum(x => x.Quantity * x.UnitPrice) جنيه</td>
+                    <td class="align-middle">
+                        <div class="d-flex flex-column gap-1 p-1">
+                            <a asp-controller="Orders"
+                                   asp-action="Edit"
+                                   asp-route-orderId="@order.Id"
+                                   class="btn btn-outline-primary btn-sm fw-bold">
+                                تعديل الفاتورة
+                            </a>
+                            
+                            <a href="/Orders/PrintInvoice?orderId=@order.Id"
+                                   target="_blank"
+                                   class="btn btn-sm btn-outline-success fw-bold">
+                                🖨️ طباعة الفاتورة
+                            </a>
+                            
+                            <form asp-controller="Orders" asp-action="DeleteOrder" method="post" onsubmit="return confirm('هل أنت متأكد من حذف هذه الفاتورة نهائياً؟ سيتم إعادة حساب مديونية العميل فوراً.');">
+                                <input type="hidden" name="orderId" value="@order.Id" />
+                                <button type="submit" class="btn @* *@ btn-outline-danger btn-sm fw-bold w-100">حذف الفاتورة</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
