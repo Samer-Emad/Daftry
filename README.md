@@ -1,80 +1,255 @@
-# Daftry (دفتري) - Financial Ledger & Retail Management System
+# 📒 Daftry (دفتري) – Financial Ledger & Retail Management System
 
-Daftry is an enterprise-grade, data-driven web application engineered to digitalize traditional retail operations, track customer ledger accounts, and manage automated financial transactions. Developed using **ASP.NET Core MVC** and **Entity Framework Core**, this system provides business owners with clear, real-time tracking of dynamic customer balances, sales periods, and instant invoice printing.
+Daftry is an enterprise-grade financial ledger and retail management system developed to digitize traditional customer account tracking and retail operations. The application enables business owners to manage customer debts, sales, payments, and generate professional invoices with real-time financial calculations.
 
----
-
-## 🛠️ Tech Stack & Architecture
-
-- **Framework:** .NET 8.0 (ASP.NET Core MVC)
-- **Data Access Layer:** Entity Framework Core (Code-First Approach)
-- **Database:** Microsoft SQL Server
-- **Reporting Engine:** QuestPDF (Advanced Document Layout & PDF Generation Engine)
-- **Frontend UI:** Bootstrap 5, HTML5, CSS3, JavaScript
-- **Design Patterns:** Repository Pattern (Abstraction Layer) & ViewModels for clean data separation.
+Built using **ASP.NET Core MVC** and **Entity Framework Core**, the system follows clean architecture principles with Repository Pattern and ViewModels to ensure maintainability and scalability.
 
 ---
 
-## 🚀 Detailed Features & Implementation Specs
+## 🚀 Features
 
-### 1. Advanced Financial Ledger (Customers Controller)
-- **Real-Time Statement Calculus:** The system aggregates total historical purchases against total payments made to output a live net debt/balance status.
-- **Dynamic Period Filtering:** Engineered a custom time-windowing logic (`AsEnumerable()` to `Where` filtering) allowing instant reports based on:
-  - **Day:** Tracks current calendar date.
-  - **Week:** Looks back exactly 7 days.
-  - **Month:** Aggregates transactions from the 1st of the current month.
-  - **Year:** Full multi-quarter tracking starting from January 1st of the current year.
-- **Data Safeguards:** Handled clean data mutation in HTTP POST actions (e.g., explicitly ensuring property assignments like `.Name` and `.Phone` map correctly to prevent database corruption).
+### 💰 Customer Financial Ledger
 
-### 2. Multi-Tiered Database Integrity & Cascade Resets
-- Managed deep relational constraints across 4 main entities: `Customer ➡️ Orders ➡️ OrderItems & Payments`.
-- **Manual Cascading Deletion:** To prevent orphaned records and protect DB referential integrity, the system implements a strict clean-up sequence when deleting a customer profile:
-  1. Identifies and removes all nested `OrderItems` linked via foreign keys.
-  2. Clears out the parent `Orders`.
-  3. Purges all historical `Payments`.
-  4. Finally commits the `Customer` deletion via transactional `SaveChangesAsync()`.
-
-### 3. Automated Document Generation Engine (Orders Controller)
-- **Single Invoice Compilation (`PrintInvoice`):** Generates standalone customer receipts rendering accurate unit pricing, quantities, original transaction timestamps, alongside a live **"System Print Timestamp"** to ensure document traceability.
-- **Accumulated Statements Reporting (`PrintAllInvoices` / `PrintPeriodInvoices`):** Streamlines multi-page PDF rendering. It loops through deep-nested structures (`.Include(x => x.Orders).ThenInclude(x => x.Items)`) to draw high-performance sub-tables for each distinct order inside a single PDF stream.
-- **RTL & Arabic Typography:** Configured QuestPDF layout infrastructure to handle **Right-to-Left (RTL)** flow seamlessly, ensuring professional, aligned Arabic invoice generation without formatting issues.
+- Real-time calculation of customer balance based on total purchases and total payments.
+- Dynamic financial statements with period filtering:
+  - Daily
+  - Weekly
+  - Monthly
+  - Yearly
+  - All Transactions
+- Customer profile management with complete ledger history.
 
 ---
 
-## 📊 Database Schema Blueprint
+### 🛒 Orders Management
 
-[Customer]
+- Create and manage customer orders.
+- Generate unique order serial numbers.
+- Store complete order history.
+- Track product price history per order.
+- Automatic total calculations.
+
+---
+
+### 💳 Payments Management
+
+- Record customer payments.
+- Automatically update remaining balance.
+- Keep full payment history.
+- Real-time debt calculations.
+
+---
+
+### 📄 PDF Invoice Generation
+
+Using **QuestPDF**, the system generates professional invoices and reports including:
+
+- Individual customer invoices.
+- Complete customer statements.
+- Period-based reports.
+- RTL (Right-to-Left) Arabic support.
+- Automatic system print timestamp.
+- Multi-page PDF generation.
+
+---
+
+### 🗄️ Database Integrity
+
+The application maintains relational integrity between entities through controlled deletion flow.
+
+When deleting a customer, the system automatically removes:
+
+1. Order Items
+2. Orders
+3. Payments
+4. Customer Record
+
+This prevents orphaned records and preserves database consistency.
+
+---
+
+## 🏗️ Tech Stack
+
+| Technology | Description |
+|------------|-------------|
+| ASP.NET Core MVC | Web Framework |
+| .NET 8 | Backend Platform |
+| Entity Framework Core | ORM |
+| SQL Server | Database |
+| QuestPDF | PDF Generation |
+| Bootstrap 5 | Frontend UI |
+| HTML5 / CSS3 / JavaScript | Frontend |
+| Repository Pattern | Data Access |
+| ViewModels | Presentation Layer |
+
+---
+
+## 📊 Database Schema
+
+```text
+Customer
 │
-├── 1 : N ──► [Orders] ──► 1 : N ──► [OrderItems] (ProductName, Quantity, UnitPrice)
+├── Orders
+│      │
+│      └── OrderItems
 │
-└── 1 : N ──► [Payments] (Amount, PaymentDate)
+└── Payments
+```
 
+### Entities
 
-- **Customer:** Stores essential identities and references cumulative orders.
-- **Orders:** Generates unique `OrderSerialNumber` timestamps per checkout.
-- **OrderItems:** Granular product ledger tracking price-point history.
-- **Payments:** Isolated ledger to deduct from customer debts dynamically.
+### Customer
+
+- Name
+- Phone
+- Orders
+- Payments
+
+### Orders
+
+- Order Serial Number
+- Order Date
+- Customer
+- Order Items
+
+### Order Items
+
+- Product Name
+- Quantity
+- Unit Price
+
+### Payments
+
+- Amount
+- Payment Date
 
 ---
 
-## 💻 Code Architecture Highlights
+## ⚙️ Business Logic Highlights
 
-Here is a look at the unified transactional business logic used inside our controller endpoints:
+### Dynamic Period Filtering
 
-```csharp
-// Multi-Include query with dynamic period evaluation and custom QuestPDF document streaming
-public async Task<IActionResult> Details(int id, string period = "all")
-{
-    var customer = await _context.Customers
-        .Include(x => x.Orders).ThenInclude(x => x.Items)
-        .Include(x => x.Payments)
-        .FirstOrDefaultAsync(x => x.Id == id);
-    
-    // Dynamic time-filtering mapping logic
-    var filteredOrders = customer.Orders.AsEnumerable();
-    if (period.ToLower() == "month")
-        filterDate = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
-        
-    // Return structured ViewModels to guarantee presentation decoupling
-    return View(vm);
-}
+The application supports dynamic filtering of customer transactions by:
+
+- Today
+- Last 7 Days
+- Current Month
+- Current Year
+- Entire History
+
+using LINQ with custom filtering logic.
+
+---
+
+### Real-Time Balance Calculation
+
+Customer balance is calculated automatically:
+
+```text
+Balance = Total Purchases − Total Payments
+```
+
+No manual calculations are required.
+
+---
+
+### Invoice Engine
+
+The invoice module:
+
+- Generates printable PDF invoices.
+- Displays product details.
+- Shows quantities and prices.
+- Includes transaction date.
+- Includes print timestamp.
+- Supports Arabic RTL formatting.
+
+---
+
+## 📁 Project Structure
+
+```text
+Controllers/
+Models/
+ViewModels/
+Repositories/
+Views/
+wwwroot/
+
+Data/
+Program.cs
+```
+
+---
+
+## 📸 Screenshots
+
+> Add screenshots here.
+
+```
+Home Page
+
+Customer Ledger
+
+Orders
+
+Invoice
+
+PDF Report
+```
+
+---
+
+## ⚡ Getting Started
+
+### Clone Repository
+
+```bash
+git clone https://github.com/yourusername/Daftry.git
+```
+
+### Navigate
+
+```bash
+cd Daftry
+```
+
+### Restore Packages
+
+```bash
+dotnet restore
+```
+
+### Apply Migration
+
+```bash
+dotnet ef database update
+```
+
+### Run Project
+
+```bash
+dotnet run
+```
+
+---
+
+## 📌 Future Improvements
+
+- Authentication & Authorization
+- Dashboard Analytics
+- Export to Excel
+- Product Inventory
+- Notifications
+- Role Management
+
+---
+
+## 👨‍💻 Author
+
+**Samer Emad**
+
+Back-End ASP.NET Core Developer
+
+- GitHub: https://github.com/yourusername
+- LinkedIn: https://linkedin.com/in/yourusername
