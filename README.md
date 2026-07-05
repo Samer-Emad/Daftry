@@ -84,17 +84,7 @@ This prevents orphaned records and preserves database consistency.
 
 ---
 
-## 📊 Database Schema
-
-```text
-Customer
-│
-├── Orders
-│      │
-│      └── OrderItems
-│
-└── Payments
-```
+## 📊 Database
 
 ### Entities
 
