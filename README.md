@@ -42,3 +42,39 @@ Daftry is an enterprise-grade, data-driven web application engineered to digital
 ---
 
 ## 📊 Database Schema Blueprint
+
+[Customer]
+│
+├── 1 : N ──► [Orders] ──► 1 : N ──► [OrderItems] (ProductName, Quantity, UnitPrice)
+│
+└── 1 : N ──► [Payments] (Amount, PaymentDate)
+
+
+- **Customer:** Stores essential identities and references cumulative orders.
+- **Orders:** Generates unique `OrderSerialNumber` timestamps per checkout.
+- **OrderItems:** Granular product ledger tracking price-point history.
+- **Payments:** Isolated ledger to deduct from customer debts dynamically.
+
+---
+
+## 💻 Code Architecture Highlights
+
+Here is a look at the unified transactional business logic used inside our controller endpoints:
+
+```csharp
+// Multi-Include query with dynamic period evaluation and custom QuestPDF document streaming
+public async Task<IActionResult> Details(int id, string period = "all")
+{
+    var customer = await _context.Customers
+        .Include(x => x.Orders).ThenInclude(x => x.Items)
+        .Include(x => x.Payments)
+        .FirstOrDefaultAsync(x => x.Id == id);
+    
+    // Dynamic time-filtering mapping logic
+    var filteredOrders = customer.Orders.AsEnumerable();
+    if (period.ToLower() == "month")
+        filterDate = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+        
+    // Return structured ViewModels to guarantee presentation decoupling
+    return View(vm);
+}
