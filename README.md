@@ -163,5 +163,5 @@ The invoice module:
 
 Back-End ASP.NET Core Developer
 
-- GitHub: https://github.com/yourusername
-- LinkedIn: https://linkedin.com/in/yourusername
+- GitHub: https://github.com/Samer-Emad
+- LinkedIn: https://www.linkedin.com/in/samer-emad-se1112004/
